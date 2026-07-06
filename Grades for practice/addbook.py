@@ -52,10 +52,6 @@ def add_book(books):
     books.append({
         "title": title,
         "author": author,
-        "year": year,
-        "id": book_id,
-        "borrowed": False,
-        "borrower": ""
-    })
+        "yea
 
     print(f"Book '{title}' added successfully.")
