@@ -49,9 +49,5 @@ def add_book(books):
         print(f"Book ID '{book_id}' already exists. Book not added.")
         return
 
-    books.append({
-        "title": title,
-        "author": author,
-        "yea
 
     print(f"Book '{title}' added successfully.")
