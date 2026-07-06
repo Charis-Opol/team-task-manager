@@ -1,74 +1,54 @@
 """
-Task service — the app's business logic.
+Task model.
 
-Owned by: Person 4 (Task Service)
+Owned by: Person 2 (Task Model)
 
-The CLI never touches storage.py or task.py directly. It only talks to
-TaskService. That's the Single Responsibility Principle in practice:
-this class's one job is "manage the collection of tasks."
+A Task is the core unit of data in the app. Keeping it in its own module
+(and its own class) means nothing else in the codebase needs to know how
+a task is stored internally — only how to ask it questions
+(to_dict / from_dict) and read its fields.
 """
 
-from typing import List, Optional
+from dataclasses import dataclass, field
+from typing import Optional
 
-from src.models.task import Task
-from src.storage.storage import load_tasks, save_tasks
-from src.utils.validators import validate_title, validate_priority
+VALID_PRIORITIES = ("low", "medium", "high")
 
 
-class TaskService:
-    def __init__(self, storage_path: Optional[str] = None):
-        self._storage_path = storage_path
-        self._tasks: List[Task] = self._load()
+@dataclass
+class Task:
+    """A single to-do item."""
 
-    def _load(self) -> List[Task]:
-        if self._storage_path:
-            return load_tasks(self._storage_path)
-        return load_tasks()
+    id: int
+    title: str
+    completed: bool = False
+    priority: str = "medium"
 
-    def _save(self) -> None:
-        if self._storage_path:
-            save_tasks(self._tasks, self._storage_path)
-        else:
-            save_tasks(self._tasks)
+    def mark_complete(self) -> None:
+        self.completed = True
 
-    def _next_id(self) -> int:
-        if not self._tasks:
-            return 1
-        return max(task.id for task in self._tasks) + 1
+    def mark_incomplete(self) -> None:
+        self.completed = False
 
-    def list_tasks(self) -> List[Task]:
-        return list(self._tasks)
+    def to_dict(self) -> dict:
+        """Convert this Task into a plain dict, ready for JSON storage."""
+        return {
+            "id": self.id,
+            "title": self.title,
+            "completed": self.completed,
+            "priority": self.priority,
+        }
 
-    def add_task(self, title: str, priority: str = "medium") -> Task:
-        clean_title = validate_title(title)
-        clean_priority = validate_priority(priority)
-        task = Task(id=self._next_id(), title=clean_title, priority=clean_priority)
-        self._tasks.append(task)
-        self._save()
-        return task
+    @staticmethod
+    def from_dict(data: dict) -> "Task":
+        """Rebuild a Task from a dict loaded out of JSON storage."""
+        return Task(
+            id=data["id"],
+            title=data["title"],
+            completed=data.get("completed", False),
+            priority=data.get("priority", "medium"),
+        )
 
-    def delete_task(self, task_id: int) -> bool:
-        before = len(self._tasks)
-        self._tasks = [t for t in self._tasks if t.id != task_id]
-        deleted = len(self._tasks) != before
-        if deleted:
-            self._save()
-        return deleted
-
-    def mark_complete(self, task_id: int) -> bool:
-        task = self._find(task_id)
-        if not task:
-            return False
-        task.mark_complete()
-        self._save()
-        return True
-
-    def search_tasks(self, keyword: str) -> List[Task]:
-        keyword_lower = keyword.strip().lower()
-        return [t for t in self._tasks if keyword_lower in t.title.lower()]
-
-    def _find(self, task_id: int) -> Optional[Task]:
-        for task in self._tasks:
-            if task.id == task_id:
-                return task
-        return None
+    def __str__(self) -> str:
+        status = "x" if self.completed else " "
+        return f"[{status}] #{self.id} ({self.priority}) {self.title}"
